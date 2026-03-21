@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cloud Intrusion Detection System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0e1a; color: #e0e6f0; font-family: 'Segoe UI', sans-serif; }
+
+    header {
+      background: linear-gradient(135deg, #0d1b2a, #1a2744);
+      padding: 18px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #1e3a5f;
+    }
+    header h1 { font-size: 1.4rem; color: #4fc3f7; letter-spacing: 1px; }
+    header span { font-size: 0.85rem; color: #90caf9; }
+    .live-badge {
+      background: #1b5e20; color: #69f0ae; padding: 4px 12px;
+      border-radius: 20px; font-size: 0.75rem; font-weight: bold;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+    .container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; padding: 24px; }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1e3a5f;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card h3 { font-size: 0.85rem; color: #90caf9; text-transform: uppercase; margin-bottom: 14px; letter-spacing: 1px; }
+
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-box {
+      background: #0d1b2a;
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+    }
+    .stat-box .value { font-size: 2rem; font-weight: bold; color: #4fc3f7; }
+    .stat-box .label { font-size: 0.75rem; color: #78909c; margin-top: 4px; }
+    .stat-box.threat .value { color: #ef5350; }
+    .stat-box.safe .value { color: #66bb6a; }
+
+    /* Attack buttons */
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .attack-btn {
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+    .attack-btn:hover { transform: scale(1.04); opacity: 0.9; }
+    .btn-ddos    { background: #b71c1c; color: white; }
+    .btn-dos     { background: #e65100; color: white; }
+    .btn-scan    { background: #1565c0; color: white; }
+    .btn-bot     { background: #6a1b9a; color: white; }
+    .btn-ftp     { background: #00695c; color: white; }
+    .btn-ssh     { background: #37474f; color: white; }
+    .btn-benign  { background: #1b5e20; color: white; grid-column: span 2; }
+
+    /* Live feed */
+    .feed { height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+    .feed-item {
+      background: #0d1b2a;
+      border-left: 3px solid #1e3a5f;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.78rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .feed-item.threat { border-left-color: #ef5350; background: #1a0a0a; }
+    .feed-item.safe   { border-left-color: #66bb6a; }
+    .badge {
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: bold;
+    }
+    .badge.block  { background: #b71c1c; color: white; }
+    .badge.allow  { background: #1b5e20; color: #69f0ae; }
+    .badge.alert  { background: #e65100; color: white; }
+
+    /* Distribution bars */
+    .dist-item { margin-bottom: 10px; }
+    .dist-label { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px; }
+    .bar-bg { background: #1e3a5f; border-radius: 4px; height: 8px; }
+    .bar-fill { height: 8px; border-radius: 4px; transition: width 0.5s; }
+
+    /* Detection result box */
+    .result-box {
+      background: #0d1b2a;
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      margin-top: 10px;
+      border: 1px solid #1e3a5f;
+    }
+    .result-box .attack-label { font-size: 1.5rem; font-weight: bold; color: #ef5350; }
+    .result-box .attack-label.safe { color: #66bb6a; }
+    .result-meta { display: flex; justify-content: center; gap: 16px; margin-top: 10px; }
+    .meta-tag {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: bold;
+    }
+    .meta-sev-high     { background: #b71c1c22; color: #ef5350; border: 1px solid #ef5350; }
+    .meta-sev-medium   { background: #e6510022; color: #ff9800; border: 1px solid #ff9800; }
+    .meta-sev-none     { background: #1b5e2022; color: #66bb6a; border: 1px solid #66bb6a; }
+    .meta-sev-critical { background: #4a0a0a; color: #ff1744; border: 1px solid #ff1744; }
+    .meta-action-block { background: #b71c1c44; color: #ef5350; border: 1px solid #ef5350; }
+    .meta-action-allow { background: #1b5e2044; color: #66bb6a; border: 1px solid #66bb6a; }
+    .meta-action-alert { background: #e6510044; color: #ff9800; border: 1px solid #ff9800; }
+    .confidence { font-size: 0.8rem; color: #90caf9; margin-top: 8px; }
+
+    .full-width { grid-column: span 3; }
+    .two-col    { grid-column: span 2; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0a0e1a; }
+    ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🛡️ Cloud Intrusion Detection System</h1>
+    <span>ML-Powered Network Security Monitor — XGBoost 99.97%</span>
+  </div>
+  <span class="live-badge">● LIVE</span>
+</header>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="card">
+    <h3>📊 Session Statistics</h3>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="value" id="totalCount">0</div><div class="label">Total Packets</div></div>
+      <div class="stat-box threat"><div class="value" id="threatCount">0</div><div class="label">Threats</div></div>
+      <div class="stat-box safe"><div class="value" id="safeCount">0</div><div class="label">Safe</div></div>
+      <div class="stat-box threat"><div class="value" id="threatRate">0%</div><div class="label">Threat Rate</div></div>
+    </div>
+  </div>
+
+  <!-- Last Detection -->
+  <div class="card">
+    <h3>🔍 Last Detection</h3>
+    <div class="result-box" id="resultBox">
+      <div class="attack-label safe" id="attackLabel">WAITING...</div>
+      <div class="result-meta">
+        <span class="meta-tag meta-sev-none" id="sevTag">SEVERITY: —</span>
+        <span class="meta-tag meta-action-allow" id="actTag">ACTION: —</span>
+      </div>
+      <div class="confidence" id="confText">Click an attack button below to test</div>
+    </div>
+  </div>
+
+  <!-- Simulate Attacks -->
+  <div class="card">
+    <h3>⚡ Simulate Attack</h3>
+    <div class="btn-grid">
+      <button class="attack-btn btn-ddos"   onclick="simulate('DDoS')">DDoS</button>
+      <button class="attack-btn btn-dos"    onclick="simulate('DoS Hulk')">DoS Hulk</button>
+      <button class="attack-btn btn-scan"   onclick="simulate('PortScan')">PortScan</button>
+      <button class="attack-btn btn-bot"    onclick="simulate('Bot')">Bot</button>
+      <button class="attack-btn btn-ftp"    onclick="simulate('FTP-Patator')">FTP-Patator</button>
+      <button class="attack-btn btn-ssh"    onclick="simulate('SSH-Patator')">SSH-Patator</button>
+      <button class="attack-btn btn-benign" onclick="simulate('BENIGN')">✅ Normal Traffic (BENIGN)</button>
+    </div>
+  </div>
+
+  <!-- Live Feed -->
+  <div class="card two-col">
+    <h3>📡 Live Traffic Feed</h3>
+    <div class="feed" id="feed">
+      <div class="feed-item safe">
+        <span>System ready — click a button to simulate traffic</span>
+        <span class="badge allow">IDLE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attack Distribution -->
+  <div class="card">
+    <h3>📈 Attack Distribution</h3>
+    <div id="distribution"></div>
+  </div>
+
+</div>
+
+<script>
+  const stats = { total: 0, threats: 0, safe: 0 };
+  const attackCounts = {};
+
+  async function simulate(attackType) {
+    try {
+      const res = await fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attack_type: attackType })
+      });
+      const data = await res.json();
+      updateDashboard(data);
+    } catch (e) {
+      console.error("Prediction error:", e);
+    }
+  }
+
+  function updateDashboard(data) {
+    const { attack_type, severity, action, confidence, threat_detected } = data;
+
+    // Update stats
+    stats.total++;
+    if (threat_detected) stats.threats++; else stats.safe++;
+    document.getElementById("totalCount").textContent = stats.total;
+    document.getElementById("threatCount").textContent = stats.threats;
+    document.getElementById("safeCount").textContent = stats.safe;
+    const rate = stats.total ? Math.round((stats.threats / stats.total) * 100) : 0;
+    document.getElementById("threatRate").textContent = rate + "%";
+
+    // Update last detection
+    const label = document.getElementById("attackLabel");
+    label.textContent = attack_type;
+    label.className = "attack-label " + (threat_detected ? "" : "safe");
+
+    const sevTag = document.getElementById("sevTag");
+    sevTag.textContent = "SEVERITY: " + severity;
+    sevTag.className = "meta-tag meta-sev-" + severity.toLowerCase();
+
+    const actTag = document.getElementById("actTag");
+    actTag.textContent = "ACTION: " + action;
+    actTag.className = "meta-tag meta-action-" + action.toLowerCase();
+
+    document.getElementById("confText").textContent = `Confidence: ${confidence}%`;
+
+    // Add to live feed
+    addFeedItem(attack_type, severity, action, threat_detected);
+
+    // Update distribution
+    attackCounts[attack_type] = (attackCounts[attack_type] || 0) + 1;
+    updateDistribution();
+  }
+
+  function addFeedItem(attack, severity, action, isThreat) {
+    const feed = document.getElementById("feed");
+    const item = document.createElement("div");
+    item.className = "feed-item " + (isThreat ? "threat" : "safe");
+    const time = new Date().toLocaleTimeString();
+    item.innerHTML = `
+      <span>${time} — <strong>${attack}</strong> ${severity !== 'NONE' ? '| ' + severity : ''}</span>
+      <span class="badge ${action.toLowerCase()}">${action}</span>
+    `;
+    feed.insertBefore(item, feed.firstChild);
+    if (feed.children.length > 50) feed.removeChild(feed.lastChild);
+  }
+
+  function updateDistribution() {
+    const div = document.getElementById("distribution");
+    const total = Object.values(attackCounts).reduce((a, b) => a + b, 0);
+    const colors = {
+      "DDoS":"#ef5350","DoS Hulk":"#ff7043","PortScan":"#42a5f5",
+      "Bot":"#ab47bc","FTP-Patator":"#26a69a","SSH-Patator":"#78909c",
+      "BENIGN":"#66bb6a","DoS slowloris":"#ff8f00","DoS Slowhttptest":"#ffa726",
+      "DoS GoldenEye":"#ffca28","Heartbleed":"#ff1744"
+    };
+    div.innerHTML = Object.entries(attackCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => {
+        const pct = Math.round((count / total) * 100);
+        const color = colors[name] || "#90caf9";
+        return `
+          <div class="dist-item">
+            <div class="dist-label"><span>${name}</span><span>${count} (${pct}%)</span></div>
+            <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+          </div>`;
+      }).join("");
+  }
+</script>
+</body>
+</html>
